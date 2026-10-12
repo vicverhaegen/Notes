@@ -1,25 +1,20 @@
-const { app, BrowserWindow, ipcMain, dialog, Notification, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Notification, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 app.name = 'Notes';
 
-// Enable startup with Windows
+// Start automatisch op met Windows (als gewone opstart-app, zichtbaar)
 app.setLoginItemSettings({
   openAtLogin: true,
   path: process.execPath,
-  args: ['--hidden'],
 });
 
 const DATA_FILE = path.join(app.getPath('userData'), 'notes_data.json');
 
 let mainWindow = null;
-let tray = null;
-let isQuitting = false;
 
 function createWindow() {
-  const isHidden = process.argv.includes('--hidden');
-
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -29,8 +24,7 @@ function createWindow() {
     icon: path.join(__dirname, '../public/icon.png'),
     frame: true,
     titleBarStyle: 'default',
-    autoHideMenuBar: true, // Completely hides the File Edit View Window menu bar
-    show: !isHidden,
+    autoHideMenuBar: true, // Verbergt de File Edit View menu balk
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -38,7 +32,7 @@ function createWindow() {
     },
   });
 
-  // Remove default application menu
+  // Verwijder standaard menu
   Menu.setApplicationMenu(null);
 
   mainWindow.on('page-title-updated', (e) => {
@@ -46,12 +40,8 @@ function createWindow() {
     mainWindow.setTitle('Notes');
   });
 
-  // Minimize to tray instead of closing completely so it runs in background
-  mainWindow.on('close', (e) => {
-    if (!isQuitting) {
-      e.preventDefault();
-      mainWindow.hide();
-    }
+  mainWindow.on('closed', () => {
+    mainWindow = null;
   });
 
   const distPath = path.join(__dirname, '../dist/index.html');
@@ -64,40 +54,6 @@ function createWindow() {
   } else {
     mainWindow.loadFile(distPath);
   }
-}
-
-function createTray() {
-  const iconPath = path.join(__dirname, '../public/icon.png');
-  tray = new Tray(iconPath);
-  tray.setToolTip('Notes');
-
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Open Notes',
-      click: () => {
-        mainWindow?.show();
-        mainWindow?.focus();
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Afsluiten',
-      click: () => {
-        isQuitting = true;
-        app.quit();
-      },
-    },
-  ]);
-
-  tray.setContextMenu(contextMenu);
-  tray.on('click', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
-  });
-  tray.on('double-click', () => {
-    mainWindow?.show();
-    mainWindow?.focus();
-  });
 }
 
 // Storage IPC Handlers
@@ -115,10 +71,6 @@ ipcMain.handle('storage:load', async () => {
 
 ipcMain.handle('storage:save', async (_event, data) => {
   try {
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
     return { success: true };
   } catch (err) {
@@ -197,7 +149,9 @@ ipcMain.on('window:maximize', () => {
     mainWindow?.maximize();
   }
 });
-ipcMain.on('window:close', () => mainWindow?.close());
+ipcMain.on('window:close', () => {
+  app.quit();
+});
 
 // Native Windows Desktop Notification
 ipcMain.on('notify:show', (_event, { title, body }) => {
@@ -213,17 +167,13 @@ ipcMain.on('notify:show', (_event, { title, body }) => {
 
 app.whenReady().then(() => {
   createWindow();
-  createTray();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('before-quit', () => {
-  isQuitting = true;
-});
-
+// Sluit direct helemaal af zodra het venster gesloten wordt (geen achtergrondproces)
 app.on('window-all-closed', () => {
-  // Keep background tray alive on Windows
+  app.quit();
 });
