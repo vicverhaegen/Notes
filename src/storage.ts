@@ -155,6 +155,48 @@ export const saveAppData = async (data: AppData, skipCloud = false): Promise<voi
 export const subscribeToCloudUpdates = (
   onRemoteUpdate: (data: AppData) => void
 ): (() => void) => {
+  let isFetching = false;
+
+  const handleUpdate = async (incomingData?: AppData) => {
+    let finalData = incomingData;
+
+    // If data is missing (PostgreSQL skips large TOAST jsonb columns over websocket), fetch full state
+    if (!finalData || !finalData.boards) {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        const { data: row } = await supabase
+          .from('app_state')
+          .select('data')
+          .eq('id', STATE_ROW_ID)
+          .maybeSingle();
+
+        if (row && row.data && (row.data as AppData).boards?.length > 0) {
+          finalData = row.data as AppData;
+        }
+      } catch (err) {
+        console.warn('Failed fetching full cloud state:', err);
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    if (!finalData || !finalData.boards) return;
+
+    const incomingJson = JSON.stringify(finalData);
+    // Only trigger update if incoming data is genuinely different from local
+    if (incomingJson !== lastSavedLocalJson) {
+      lastSavedLocalJson = incomingJson;
+      // Cache locally
+      localStorage.setItem(STORAGE_KEY, incomingJson);
+      if (isElectron() && window.electronAPI?.saveData) {
+        window.electronAPI.saveData(finalData);
+      }
+      // Notify React component
+      onRemoteUpdate(finalData);
+    }
+  };
+
   const channel = supabase
     .channel('realtime:app_state')
     .on(
@@ -166,20 +208,7 @@ export const subscribeToCloudUpdates = (
       },
       (payload) => {
         const newData = (payload.new as { data?: AppData })?.data;
-        if (!newData || !newData.boards) return;
-
-        const incomingJson = JSON.stringify(newData);
-        // Only trigger update if incoming data is genuinely different from local
-        if (incomingJson !== lastSavedLocalJson) {
-          lastSavedLocalJson = incomingJson;
-          // Cache locally
-          localStorage.setItem(STORAGE_KEY, incomingJson);
-          if (isElectron() && window.electronAPI?.saveData) {
-            window.electronAPI.saveData(newData);
-          }
-          // Notify React component
-          onRemoteUpdate(newData);
-        }
+        handleUpdate(newData);
       }
     )
     .subscribe();
