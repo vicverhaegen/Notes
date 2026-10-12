@@ -75,7 +75,12 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gradient-to-br from-[#f1f5f9] via-[#f8fafc] to-[#e2e8f0] p-6 sm:p-10 select-none">
+    <div
+      className="flex-1 overflow-y-auto bg-gradient-to-br from-[#f1f5f9] via-[#f8fafc] to-[#e2e8f0] p-6 sm:p-10 select-none"
+      style={{
+        paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
         {/* Header Banner */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/80">

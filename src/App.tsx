@@ -479,7 +479,7 @@ export function App() {
   const isListDark = isDarkColor(listColor, listOpacity);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#edf2f7] text-slate-800 overflow-hidden font-sans select-none">
+    <div className="flex flex-col h-screen h-dvh w-screen bg-[#edf2f7] text-slate-800 overflow-hidden font-sans select-none">
       {/* Top Bar with Notes branding, Board Selector and Settings */}
       <TopNavbar
         board={currentBoard}
@@ -533,6 +533,9 @@ export function App() {
             <div
               ref={boardScrollRef}
               className="flex-1 flex gap-3 p-4 md:p-5 overflow-x-auto overflow-y-hidden items-start relative z-10"
+              style={{
+                paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))',
+              }}
             >
               {currentBoard?.columns.map((column) => {
                 const columnCards = column.cardIds

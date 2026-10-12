@@ -44,6 +44,10 @@ export const BoardSidebar: React.FC<BoardSidebarProps> = ({
       <div
         className="w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200/80 flex flex-col h-full shadow-xl animate-in slide-in-from-left duration-150"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
       >
         {/* Header */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
