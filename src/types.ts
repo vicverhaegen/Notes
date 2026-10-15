@@ -30,4 +30,6 @@ export interface Board {
 export interface AppData {
   boards: Board[];
   activeBoardId: string | null;
+  _clientId?: string;
+  _updatedAt?: number;
 }

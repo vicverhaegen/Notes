@@ -63,7 +63,25 @@ export function App() {
 
     // Listen for live updates from iPhone / other tabs / devices
     const unsubscribe = subscribeToCloudUpdates((remoteData) => {
-      setAppData(remoteData);
+      setAppData((current) => {
+        if (!current) return remoteData;
+
+        // Preserve the currently active board on this device so the user is never yanked away
+        const currentActive = current.activeBoardId;
+        const activeBoardStillExists =
+          currentActive && remoteData.boards.some((b) => b.id === currentActive);
+
+        const targetActiveId = activeBoardStillExists
+          ? currentActive
+          : (remoteData.boards.some((b) => b.id === remoteData.activeBoardId)
+              ? remoteData.activeBoardId
+              : remoteData.boards[0]?.id || null);
+
+        return {
+          ...remoteData,
+          activeBoardId: targetActiveId,
+        };
+      });
     });
 
     return () => {
